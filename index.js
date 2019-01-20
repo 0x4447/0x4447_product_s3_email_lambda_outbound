@@ -114,6 +114,8 @@ function load_the_email(container)
 			//
 			container.email.json = JSON.parse(data.Body)
 
+			console.log(container.email.json)
+
 			//
 			//	->	Move to the next chain.
 			//
