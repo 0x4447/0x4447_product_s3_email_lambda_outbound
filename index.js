@@ -9,6 +9,13 @@ let s3 = new AWS.S3({
 });
 
 //
+//	Initialize SES.
+//
+let ses = new AWS.SES({
+	apiVersion: '2010-12-01'
+});
+
+//
 //	This lambda will read outgoing emails send them using SES, and store it
 //	in S3 under the same path as the incoming email, but the difference is
 //	that the file is saved in the Sent folder.
