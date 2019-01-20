@@ -259,7 +259,7 @@ function send_email(container)
         //
         let params = {
             RawMessage:{
-                Data: container.raw_email
+                Data: container.email.raw
             }
         };
 
