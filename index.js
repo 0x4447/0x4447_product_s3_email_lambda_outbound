@@ -109,7 +109,7 @@ function load_the_email(container)
 				return reject(error);
 			}
 
-			console.log(data)
+			console.log(data.Body)
 
 			//
 			//	2.	Save the email for the next promise
