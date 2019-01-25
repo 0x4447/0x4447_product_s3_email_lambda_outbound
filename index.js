@@ -36,8 +36,6 @@ exports.handler = (event) => {
 		uuid: uuidv1()
 	}
 
-	console.log(container);
-
 	//
 	//	->	Start the chain.
 	//
@@ -442,6 +440,8 @@ function delete_raw_email(container)
 			Bucket: container.bucket,
 			Key: "/TMP/email_out/raw/" + container.uuid
 		};
+
+		console.log(params)
 
 		//
 		//	->	Execute the query.
