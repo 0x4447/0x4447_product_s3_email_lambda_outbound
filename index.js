@@ -1,4 +1,5 @@
 let AWS = require('aws-sdk');
+let moment = require('moment');
 let uuidv1 = require('uuid/v1');
 let MailComposer = require('nodemailer/lib/mail-composer');
 
@@ -17,9 +18,8 @@ let ses = new AWS.SES({
 });
 
 //
-//	This lambda will read outgoing emails send them using SES, and store it
-//	in S3 under the same path as the incoming email, but the difference is
-//	that the file is saved in the Sent folder.
+//	This lambda will read outgoing emails formated in JSON, convert them
+//	in to a raw email, send them using SES, and store them in S3.
 //
 exports.handler = (event) => {
 
@@ -91,7 +91,7 @@ exports.handler = (event) => {
 //
 
 //
-//	Load the email from S3.
+//	Load the JSON email that triggered this Lambda.
 //
 function load_the_email(container)
 {
@@ -121,9 +121,9 @@ function load_the_email(container)
 			}
 
 			//
-			//	2.	Save the email for the next promise
+			//	2.	Save the email for the next promise.
 			//
-			container.email.json = JSON.parse(data.Body)
+			container.email.json = JSON.parse(data.Body);
 
 			//
 			//	->	Move to the next chain.
@@ -174,40 +174,46 @@ function extract_data(container)
 		//		we can build a S3 patch which will automatically organize
 		//		all the email in structured folder.
 		//
-		let to_path = user_name.replace(/\+/g, "/");
+		let to_account = user_name.replace(/\+/g, "/");
 
 		//
 		//	5.	Get the domain name of the email which in our case will
 		//		become the company name.
 		//
-		let company_name = tmp_from[1];
+		let from_domain = tmp_from[1];
 
 		//
 		//	6.	Get the name of who sent us the email.
 		//
-		let company_account = tmp_from[0];
+		let from_account = tmp_from[0];
 
 		//
-		//	7.	Create the path where the email needs to be moved
+		//	7.	Create a human readable time stamp that matches the format
+		//		S3 Provides in its Event.
+		//
+		date = moment().format("ddd, DD MMM YYYY HH:MM:SS ZZ");
+
+		//
+		//	8.	Create the path where the email needs to be moved
 		//		so it is properly organized.
 		//
 		let path = 	"Sent/"
 					+ to_domain
 					+ "/"
-					+ company_name
+					+ to_account
 					+ "/"
-					+ to_path
+					+ from_domain
 					+ "/"
-					+ company_account
+					+ from_account
 					+ "/"
-					+ container.date
+					+ date
 					+ " - "
 					+ container.subject
 					+ "/"
 					+ "email";
 
 		//
-		//	8.	Save the path for the next promise.
+		//	9.	Save the path for the next promise.
 		//
 		container.path = path;
 
@@ -220,7 +226,9 @@ function extract_data(container)
 }
 
 //
-//	Save the text version of the email
+//	From the JSON file that we loaded in to memory we generate a RAW version
+//	that can be used by SES, and later on stored and converted in multiple
+//	formats.
 //
 function generate_the_raw_email(container, callback)
 {
@@ -262,7 +270,7 @@ function generate_the_raw_email(container, callback)
 }
 
 //
-//
+//	Use the newly generated RAW email and send it using SES.
 //
 function send_email(container)
 {
@@ -303,7 +311,17 @@ function send_email(container)
 }
 
 //
-//	Save the text version of the email
+//	We now save the RAW email to S3 in a temporary folder. We do this because
+//	we don't want to create a PUT action in the Sent folder. The reason is
+//	that if we were to put the object directly to the destination, it would
+//	create a PUT action which would trigger the Convert Lambda. And this is
+//	fine. But then then Convert Lambda would save the object with a PUT action
+//	which would trigger the Convert Lambda once more, and until infinity.
+//
+//	To prevent this loop, we make a temporary PUT event with no triggers,
+//	and then we copy the object to the final destination, which triggers
+//	the Convert action, and once the convert action makes a PUT nothing else
+//	happens.
 //
 function save_raw_email(container)
 {
@@ -344,7 +362,8 @@ function save_raw_email(container)
 }
 
 //
-//	Save the text version of the email
+//	Now that we have our RAW email saved we do a copy event so it will trigger
+//	the Conversion Lambda.
 //
 function copy_raw_email(container)
 {
@@ -385,7 +404,7 @@ function copy_raw_email(container)
 }
 
 //
-//	Load the email from S3.
+//	And before we finish we clean up the environment by deleting the JSON email,
 //
 function delete_json_email(container)
 {
@@ -425,7 +444,7 @@ function delete_json_email(container)
 }
 
 //
-//	Load the email from S3.
+//	And the temporary RAW email.
 //
 function delete_raw_email(container)
 {
