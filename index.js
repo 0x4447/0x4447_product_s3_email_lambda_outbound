@@ -64,6 +64,14 @@ exports.handler = (event) => {
 
 		}).then(function(container) {
 
+			return delete_json_email(container);
+
+		}).then(function(container) {
+
+			return delete_raw_email(container);
+
+		}).then(function(container) {
+
 			return true;
 
 		}).catch(function(error) {
@@ -83,6 +91,7 @@ exports.handler = (event) => {
 //	| |      | | \ \  | |__| | | |  | |  _| |_   ____) | | |____   ____) |
 //	|_|      |_|  \_\  \____/  |_|  |_| |_____| |_____/  |______| |_____/
 //
+
 //
 //	Load the email from S3.
 //
@@ -100,8 +109,6 @@ function load_the_email(container)
 			Key: container.key
 		};
 
-		console.log(params)
-
 		//
 		//	->	Execute the query.
 		//
@@ -115,13 +122,10 @@ function load_the_email(container)
 				return reject(error);
 			}
 
-			console.log(data.Body.toString())
-
 			//
 			//	2.	Save the email for the next promise
 			//
 			container.email.json = JSON.parse(data.Body)
-
 
 			//
 			//	->	Move to the next chain.
@@ -254,6 +258,7 @@ function generate_the_raw_email(container, callback)
 			//	->	Move to the next promise
 			//
             return resolve(container);
+
 		});
 	});
 }
@@ -312,12 +317,10 @@ function save_raw_email(container)
 		//	1.	Set the query.
 		//
 		let params = {
-			Bucket: process.env.BUCKET,
+			Bucket: container.bucket,
 			Key: 'TMP/email_out/raw/' + container.uuid,
 			Body: container.email.raw
 		};
-
-		console.log(params);
 
 		//
 		//	->	Execute the query.
@@ -355,17 +358,95 @@ function copy_raw_email(container)
 		//	1.	Set the query.
 		//
 		let params = {
-			Bucket: process.env.BUCKET,
-			CopySource: process.env.BUCKET + "/TMP/email_out/raw/" + container.uuid,
+			Bucket: container.bucket,
+			CopySource: container.bucket + "/TMP/email_out/raw/" + container.uuid,
 			Key: container.path
 		};
-
-		console.log(params);
 
 		//
 		//	->	Execute the query.
 		//
 		s3.copyObject(params, function(error, data) {
+
+			//
+			//	1.	Check for internal errors.
+			//
+			if(error)
+			{
+				return reject(error);
+			}
+
+			//
+			//	->	Move to the next chain.
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Load the email from S3.
+//
+function delete_json_email(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		console.info("delete_json_email");
+
+		//
+		//	1.	Set the query.
+		//
+		let params = {
+			Bucket: container.bucket,
+			Key: container.key
+		};
+
+		//
+		//	->	Execute the query.
+		//
+		s3.deleteObject(params, function(error, data) {
+
+			//
+			//	1.	Check for internal errors.
+			//
+			if(error)
+			{
+				return reject(error);
+			}
+
+			//
+			//	->	Move to the next chain.
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Load the email from S3.
+//
+function delete_raw_email(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		console.info("delete_raw_email");
+
+		//
+		//	1.	Set the query.
+		//
+		let params = {
+			Bucket: container.bucket,
+			Key: "/TMP/email_out/raw/" + container.uuid
+		};
+
+		//
+		//	->	Execute the query.
+		//
+		s3.deleteObject(params, function(error, data) {
 
 			//
 			//	1.	Check for internal errors.
