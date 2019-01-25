@@ -109,12 +109,13 @@ function load_the_email(container)
 				return reject(error);
 			}
 
+			console.log(data)
+
 			//
 			//	2.	Save the email for the next promise
 			//
 			container.email.json = JSON.parse(data.Body)
 
-			console.log(container.email.json)
 
 			//
 			//	->	Move to the next chain.
