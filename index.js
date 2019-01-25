@@ -1,4 +1,5 @@
 let AWS = require('aws-sdk');
+let uuidv1 = require('uuid/v1');
 let MailComposer = require('nodemailer/lib/mail-composer');
 
 //
@@ -31,7 +32,8 @@ exports.handler = (event) => {
 		email: {
 			json: {},
 			raw: ""
-		}
+		},
+		uuid: uuidv1()
 	}
 
 	console.log(container);
@@ -54,7 +56,11 @@ exports.handler = (event) => {
 
 		}).then(function(container) {
 
-			return save_the_email(container);
+			return save_raw_email(container);
+
+		}).then(function(container) {
+
+			return copy_raw_email(container);
 
 		}).then(function(container) {
 
@@ -109,7 +115,7 @@ function load_the_email(container)
 				return reject(error);
 			}
 
-			console.log(data.Body)
+			console.log(data.Body.toString())
 
 			//
 			//	2.	Save the email for the next promise
@@ -218,6 +224,8 @@ function generate_the_raw_email(container, callback)
 {
 	return new Promise(function(resolve, reject) {
 
+		console.info("generate_the_raw_email");
+
 		//
 		//	1.	Crete the email based on the message object which holds all the
 		//		necessary information.
@@ -257,6 +265,8 @@ function send_email(container)
 {
     return new Promise(function(resolve, reject) {
 
+    	console.info("send_email");
+
         //
         //	1.	Create the message
         //
@@ -292,18 +302,18 @@ function send_email(container)
 //
 //	Save the text version of the email
 //
-function save_the_email(container)
+function save_raw_email(container)
 {
 	return new Promise(function(resolve, reject) {
 
-		console.info("save_the_email");
+		console.info("save_raw_email");
 
 		//
 		//	1.	Set the query.
 		//
 		let params = {
 			Bucket: process.env.BUCKET,
-			Key: container.path,
+			Key: 'TMP/email_out/raw/' + container.uuid,
 			Body: container.email.raw
 		};
 
@@ -313,6 +323,49 @@ function save_the_email(container)
 		//	->	Execute the query.
 		//
 		s3.putObject(params, function(error, data) {
+
+			//
+			//	1.	Check for internal errors.
+			//
+			if(error)
+			{
+				return reject(error);
+			}
+
+			//
+			//	->	Move to the next chain.
+			//
+			return resolve(container);
+
+		});
+
+	});
+}
+
+//
+//	Save the text version of the email
+//
+function copy_raw_email(container)
+{
+	return new Promise(function(resolve, reject) {
+
+		console.info("copy_raw_email");
+
+		//
+		//	1.	Set the query.
+		//
+		let params = {
+			Bucket: process.env.BUCKET,
+			CopySource: process.env.BUCKET + "/TMP/email_out/raw/" + container.uuid,
+			Key: container.path
+		};
+
+		console.log(params);
+
+		//
+		//	->	Execute the query.
+		//
+		s3.copyObject(params, function(error, data) {
 
 			//
 			//	1.	Check for internal errors.
