@@ -203,7 +203,7 @@ function extract_data(container)
 					+ "/"
 					+ date
 					+ " - "
-					+ container.subject
+					+ container.email.json.subject
 					+ "/"
 					+ "email";
 
