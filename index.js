@@ -438,10 +438,8 @@ function delete_raw_email(container)
 		//
 		let params = {
 			Bucket: container.bucket,
-			Key: "/TMP/email_out/raw/" + container.uuid
+			Key: "TMP/email_out/raw/" + container.uuid
 		};
-
-		console.log(params)
 
 		//
 		//	->	Execute the query.
